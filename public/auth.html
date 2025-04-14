@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Waterwise Authentication</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background: linear-gradient(135deg, #121212 0%, #000000 100%);
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            color: #ffffff;
+        }
+
+        .form-container {
+            background: rgba(30, 30, 30, 0.8);
+            width: 90%;
+            max-width: 500px;
+            margin: 2rem auto;
+            padding: 2.5rem;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        h2 {
+            text-align: center;
+            color: #ffffff;
+            margin-bottom: 1.5rem;
+            font-size: 2.2rem;
+            font-weight: 600;
+            letter-spacing: 1px;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        label {
+            font-weight: 600;
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #e0e0e0;
+            font-size: 1.1rem;
+        }
+
+        input {
+            width: 100%;
+            padding: 14px;
+            margin-top: 0.5rem;
+            border: 1px solid #444;
+            border-radius: 8px;
+            font-size: 1rem;
+            background-color: rgba(40, 40, 40, 0.8);
+            color: #ffffff;
+            transition: all 0.3s ease;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #007BFF;
+            box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+        }
+
+        .btn-submit {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(135deg, #007BFF 0%, #0056b3 100%);
+            border: none;
+            color: white;
+            font-size: 1.1rem;
+            margin-top: 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn-submit:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+        }
+
+        .auth-switch {
+            text-align: center;
+            margin-top: 1rem;
+            color: #e0e0e0;
+        }
+
+        .auth-switch a {
+            color: #007BFF;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .auth-switch a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="form-container">
+        <h2>Welcome to Waterwise</h2>
+        <form id="authForm">
+            <div>
+                <label for="email">📧 Email:</label>
+                <input type="email" id="email" name="email" placeholder="Enter your email" required>
+            </div>
+            <div>
+                <label for="password">🔒 Password:</label>
+                <input type="password" id="password" name="password" placeholder="Enter your password" required>
+            </div>
+            <button type="submit" class="btn-submit">Sign In</button>
+            <div class="auth-switch">
+                Don't have an account? <a href="#" id="switchToRegister">Register</a>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        document.getElementById("authForm").addEventListener("submit", function(e) {
+            e.preventDefault();
+            // Authentication logic will be added here
+            console.log("Authentication form submitted");
+        });
+
+        document.getElementById("switchToRegister").addEventListener("click", function(e) {
+            e.preventDefault();
+            // Toggle between login/register forms
+            const form = document.getElementById("authForm");
+            const isLogin = form.querySelector("#email");
+            
+            if (isLogin) {
+                form.innerHTML = `
+                    <div>
+                        <label for="name">👤 Full Name:</label>
+                        <input type="text" id="name" name="name" placeholder="Enter your full name" required>
+                    </div>
+                    <div>
+                        <label for="regEmail">📧 Email:</label>
+                        <input type="email" id="regEmail" name="email" placeholder="Enter your email" required>
+                    </div>
+                    <div>
+                        <label for="regPassword">🔒 Password:</label>
+                        <input type="password" id="regPassword" name="password" placeholder="Create a password" required>
+                    </div>
+                    <div>
+                        <label for="confirmPassword">🔐 Confirm Password:</label>
+                        <input type="password" id="confirmPassword" name="confirmPassword" placeholder="Confirm your password" required>
+                    </div>
+                    <button type="submit" class="btn-submit">Register</button>
+                    <div class="auth-switch">
+                        Already have an account? <a href="#" id="switchToLogin">Sign In</a>
+                    </div>
+                `;
+                
+                document.getElementById("switchToLogin").addEventListener("click", function(e) {
+                    e.preventDefault();
+                    window.location.reload();
+                });
+            }
+        });
+    </script>
+    <script src="/form.js"></script>
+</body>
+</html>
