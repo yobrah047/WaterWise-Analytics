@@ -1,51 +1,81 @@
-import pandas as pd
+print(default_api.write_file(path='import pandas as pd.py', content='''import pandas as pd
 import xgboost as xgb
+import argparse
+import json
+
+# === Setup Argument Parser ===
+parser = argparse.ArgumentParser(description='Predict water safety based on input parameters.')
+parser.add_argument('--pH', type=float, required=True, help='pH level')
+parser.add_argument('--turbidity', type=float, required=True, help='Turbidity level')
+parser.add_argument('--temperature', type=float, required=True, help='Temperature in Celsius')
+parser.add_argument('--conductivity', type=float, required=True, help='Conductivity level')
+parser.add_argument('--dissolved_oxygen', type=float, required=True, help='Dissolved Oxygen level')
+parser.add_argument('--salinity', type=float, required=True, help='Salinity level')
+parser.add_argument('--total_dissolved_solids', type=float, required=True, help='Total Dissolved Solids')
+parser.add_argument('--hardness', type=float, required=True, help='Hardness level')
+parser.add_argument('--alkalinity', type=float, required=True, help='Alkalinity level')
+parser.add_argument('--chlorine', type=float, required=True, help='Chlorine level')
+parser.add_argument('--total_coliforms', type=float, required=True, help='Total Coliforms count')
+parser.add_argument('--e_coli', type=float, required=True, help='E. coli count')
+
+args = parser.parse_args()
 
 # === Load Trained Model ===
-model = xgb.XGBClassifier()
-model.load_model("xgboost_waterwise.model")  # Replace with your trained model path
+try:
+    model = xgb.XGBClassifier()
+    model.load_model("xgboost_waterwise.model") # Replace with your trained model path if different
+except Exception as e:
+    print(json.dumps({"error": f"Failed to load model: {e}"}))
+    exit(1)
 
-# === Input from Chiromo ===
+# === Prepare Input Data ===
 data = {
-    'pH': 4,
-    'turbidity': 5,
-    'temperature': 15,
-    'conductivity': 32,
-    'dissolved_oxygen': 143,
-    'salinity': 54,
-    'total_dissolved_solids': 13,
-    'hardness': 434,
-    'alkalinity': 435,
-    'chlorine': 35,
-    'total_coliforms': 432,
-    'e_coli': 343
+    'pH': args.pH,
+    'turbidity': args.turbidity,
+    'temperature': args.temperature,
+    'conductivity': args.conductivity,
+    'dissolved_oxygen': args.dissolved_oxygen,
+    'salinity': args.salinity,
+    'total_dissolved_solids': args.total_dissolved_solids,
+    'hardness': args.hardness,
+    'alkalinity': args.alkalinity,
+    'chlorine': args.chlorine,
+    'total_coliforms': args.total_coliforms,
+    'e_coli': args.e_coli
 }
-
 input_data = pd.DataFrame([data])
 
 # === Predict Water Safety ===
-prediction = model.predict(input_data)[0]
-label = "Safe" if prediction == 1 else "Unsafe"
+try:
+    prediction = model.predict(input_data)[0]
+    label = "Safe" if prediction == 1 else "Unsafe"
+except Exception as e:
+    print(json.dumps({"error": f"Prediction failed: {e}"}))
+    exit(1)
 
 # === Generate Recommendations ===
 def generate_recommendations(data):
     messages = []
-    if data['pH'] < 6.5:
-        messages.append("Low pH detected. Neutralize with a base like lime.")
-    if data['turbidity'] > 5:
-        messages.append("Turbidity is high. Filter water before use.")
-    if data['conductivity'] < 50:
-        messages.append("Very low conductivity. Check for calibration errors.")
-    if data['dissolved_oxygen'] > 12:
-        messages.append("Dissolved Oxygen unusually high. Recheck measurement.")
-    if data['chlorine'] > 4:
-        messages.append("Chlorine levels too high. Reduce chlorination.")
+    # Basic checks based on common thresholds (adjust as needed)
+    if data['pH'] < 6.5 or data['pH'] > 8.5:
+        messages.append(f"pH ({data['pH']}) is outside the typical safe range (6.5-8.5). Adjustment may be needed.")
+    if data['turbidity'] > 5: # WHO Guideline
+        messages.append(f"Turbidity ({data['turbidity']}) is high (> 5 NTU). Consider filtration.")
+    # Add more checks based on WHO/local standards if available
+    if data['chlorine'] > 4: # Example WHO limit for free chlorine
+        messages.append(f"Chlorine level ({data['chlorine']}) is high (> 4 mg/L). Check disinfection process.")
     if data['total_coliforms'] > 0 or data['e_coli'] > 0:
-        messages.append("Microbial contamination detected! Boil or treat the water.")
+        messages.append(f"Microbial contamination detected (Coliforms: {data['total_coliforms']}, E.coli: {data['e_coli']})! Water is unsafe for drinking without treatment (e.g., boiling).")
+    # Add checks for other parameters as necessary based on context/standards
     return messages
 
-# === Display Output ===
-print("Water Status:", label)
-print("\nRecommendations:")
-for rec in generate_recommendations(data):
-    print("-", rec)
+recommendations = generate_recommendations(data)
+
+# === Output Results as JSON ===
+output = {
+    "status": label,
+    "recommendations": recommendations,
+    "input_data": data # Optional: include input data in output
+}
+print(json.dumps(output))
+'''))
