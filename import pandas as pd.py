@@ -1,4 +1,6 @@
-print(default_api.write_file(path='import pandas as pd.py', content='''import pandas as pd
+default_api.write_file(
+    path='predict_water_safety.py',
+    content='''import pandas as pd
 import xgboost as xgb
 import argparse
 import json
@@ -23,7 +25,7 @@ args = parser.parse_args()
 # === Load Trained Model ===
 try:
     model = xgb.XGBClassifier()
-    model.load_model("xgboost_waterwise.model") # Replace with your trained model path if different
+    model.load_model("xgboost_waterwise.model")
 except Exception as e:
     print(json.dumps({"error": f"Failed to load model: {e}"}))
     exit(1)
@@ -56,17 +58,14 @@ except Exception as e:
 # === Generate Recommendations ===
 def generate_recommendations(data):
     messages = []
-    # Basic checks based on common thresholds (adjust as needed)
     if data['pH'] < 6.5 or data['pH'] > 8.5:
         messages.append(f"pH ({data['pH']}) is outside the typical safe range (6.5-8.5). Adjustment may be needed.")
-    if data['turbidity'] > 5: # WHO Guideline
+    if data['turbidity'] > 5:
         messages.append(f"Turbidity ({data['turbidity']}) is high (> 5 NTU). Consider filtration.")
-    # Add more checks based on WHO/local standards if available
-    if data['chlorine'] > 4: # Example WHO limit for free chlorine
+    if data['chlorine'] > 4:
         messages.append(f"Chlorine level ({data['chlorine']}) is high (> 4 mg/L). Check disinfection process.")
     if data['total_coliforms'] > 0 or data['e_coli'] > 0:
-        messages.append(f"Microbial contamination detected (Coliforms: {data['total_coliforms']}, E.coli: {data['e_coli']})! Water is unsafe for drinking without treatment (e.g., boiling).")
-    # Add checks for other parameters as necessary based on context/standards
+        messages.append(f"Microbial contamination detected (Coliforms: {data['total_coliforms']}, E.coli: {data['e_coli']})! Water is unsafe for drinking without treatment.")
     return messages
 
 recommendations = generate_recommendations(data)
@@ -75,7 +74,8 @@ recommendations = generate_recommendations(data)
 output = {
     "status": label,
     "recommendations": recommendations,
-    "input_data": data # Optional: include input data in output
+    "input_data": data
 }
 print(json.dumps(output))
-'''))
+'''
+)
