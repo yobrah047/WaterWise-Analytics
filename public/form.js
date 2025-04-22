@@ -1,10 +1,14 @@
 document.addEventListener("DOMContentLoaded", function () {
     const form = document.getElementById("authForm");
+    const predictForm = document.getElementById("predictForm");
+    
 
     // Check if we're on the index page and add logout functionality
     if (window.location.pathname === '/') {
         // Add logout button if not already present
         if (!document.getElementById('logoutBtn')) {
+            const body = document.getElementsByTagName('body')[0]
+
             const logoutBtn = document.createElement('button');
             logoutBtn.id = 'logoutBtn';
             logoutBtn.textContent = '🚪 Logout';
@@ -22,7 +26,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 z-index: 1000;
                 box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
             `;
-            document.body.appendChild(logoutBtn);
+            body.appendChild(logoutBtn);
 
             logoutBtn.addEventListener('click', async () => {
                 try {
@@ -81,4 +85,58 @@ document.addEventListener("DOMContentLoaded", function () {
             console.error(err);
         }
     });
+
+    // Handle form submission from index.html
+    const waterTestForm = document.getElementById('waterTestForm');
+    if (waterTestForm) {
+        waterTestForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            // Gather form data
+            const formData = {};
+            const formElements = waterTestForm.elements;
+            for (let i = 0; i < formElements.length; i++) {
+                if (formElements[i].type !== 'submit') {
+                    formData[formElements[i].name] = formElements[i].value;
+                }
+            }
+
+            try {
+                const response = await fetch('/submit', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(formData),
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    const { prediction, recommendations } = result;
+
+                    // Update current page with results
+                    const resultsDiv = document.getElementById('results');
+                    resultsDiv.innerHTML = `
+                        <h3>Prediction: ${prediction.status}</h3>
+                        ${recommendations.length > 0 ? '<h4>Recommendations:</h4>' : ''}
+                        <ul>
+                            ${recommendations.map(rec => `<li>${rec}</li>`).join('')}
+                        </ul>
+                    `;
+
+                } else if (response.status === 401) {
+                    const resultsDiv = document.getElementById('results');
+                    resultsDiv.innerHTML = "<p>❌ You are not logged in!</p>";
+                } else {
+                    const resultsDiv = document.getElementById('results');
+                    resultsDiv.innerHTML = `<p>❌ Error: ${result.error || 'An unknown error occurred.'}</p>`;
+                }
+            } catch (error) {
+                const resultsDiv = document.getElementById('results');
+                resultsDiv.innerHTML = `<p>❌ Error: ${error.message || 'An unknown error occurred.'}</p>`;
+            }
+        });
+    }
 });
+

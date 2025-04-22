@@ -4,6 +4,7 @@ const { Pool } = require('pg');
 const bcrypt = require('bcryptjs');
 const session = require('express-session');
 const pgSession = require('connect-pg-simple')(session);
+const { spawn } = require('child_process');
 const path = require('path');
 
 const app = express();
@@ -43,7 +44,7 @@ app.use(
   })
 );
 
-// 🧪 Clear session route (make sure this is defined before the other routes)
+// 🧪 Clear session route
 app.get("/clear-session", (req, res) => {
   req.session.destroy(() => {
     res.send("Session cleared, please refresh the page.");
@@ -53,8 +54,12 @@ app.get("/clear-session", (req, res) => {
 // 🔐 Entry route
 app.get("/", (req, res) => {
   console.log("Session Data:", req.session);  // Log the session data for debugging
-    // Always serve auth.html for the root URL
-    res.sendFile(path.join(__dirname, "public", "auth.html"));
+  res.sendFile(path.join(__dirname, "public", "auth.html"));
+});
+
+// Route to serve results.html
+app.get("/results", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "results.html"));
 });
 
 // 🔐 Register endpoint
@@ -63,7 +68,7 @@ app.post("/api/register", async (req, res, next) => {
   if (password !== confirmPassword) {
     const error = new Error("Passwords do not match");
     error.status = 400;
-    return next(error); // Pass error to the error handling middleware
+    return next(error);
   }
 
   try {
@@ -74,7 +79,7 @@ app.post("/api/register", async (req, res, next) => {
     );
     res.json({ success: true });
   } catch (err) {
-    next(err); // Pass any error to the error handling middleware
+    next(err);
   }
 });
 
@@ -88,20 +93,20 @@ app.post("/api/login", async (req, res, next) => {
     if (!user) {
       const error = new Error("User not found");
       error.status = 400;
-      return next(error); // Pass error to the error handling middleware
+      return next(error);
     }
 
     const valid = await bcrypt.compare(password, user.password);
     if (!valid) {
       const error = new Error("Invalid password");
       error.status = 401;
-      return next(error); // Pass error to the error handling middleware
+      return next(error);
     }
 
     req.session.userId = user.id;
     res.json({ success: true });
   } catch (err) {
-    next(err); // Pass any error to the error handling middleware
+    next(err);
   }
 });
 
@@ -109,7 +114,7 @@ app.post("/api/login", async (req, res, next) => {
 app.get("/api/logout", (req, res, next) => {
   req.session.destroy((err) => {
     if (err) {
-      return next(err); // Pass logout errors to the error handling middleware
+      return next(err);
     }
     res.json({ success: true });
   });
@@ -120,56 +125,78 @@ app.post("/submit", async (req, res, next) => {
   if (!req.session.userId) {
     const error = new Error("Unauthorized");
     error.status = 401;
-    return next(error); // Pass error to the error handling middleware
+    return next(error);
   }
 
-  const data = req.body;
-  const query = `
-    INSERT INTO water_tests (
-      location, test_date, ph_level, turbidity, temperature,
-      electrical_conductivity, dissolved_oxygen, salinity,
-      total_dissolved_solids, hardness, alkalinity, chlorine,
-      total_coliforms, e_coli, water_source, additional_notes
-    ) VALUES (
-      $1, $2, $3, $4, $5,
-      $6, $7, $8,
-      $9, $10, $11, $12,
-      $13, $14, $15, $16
-    ) RETURNING id;
-  `;
-
-  const values = [
-    data.location,
-    data.date,
-    data.ph,
-    data.turbidity,
-    data.temperature,
-    data.conductivity,
-    data.oxygen,
-    data.salinity,
-    data.tds,
-    data.hardness,
-    data.alkalinity,
-    data.chlorine,
-    data.total_coliforms,
-    data.e_coli,
-    data.water_source,
-    data.notes,
+  const data = req.body; // Get form data
+    // Prepare data for Python script
+  const dataForPrediction = [
+    '--pH', data.ph,
+    '--turbidity', data.turbidity,
+    '--temperature', data.temperature,
+    '--conductivity', data.conductivity,
+    '--dissolved_oxygen', data.oxygen,
+    '--salinity', data.salinity,
+    '--total_dissolved_solids', data.tds, // Corrected typo here
+    '--hardness', data.hardness,
+    '--alkalinity', data.alkalinity,
+    '--chlorine', data.chlorine,
+      '--total_coliforms', data.total_coliforms,
+      '--e_coli', data.e_coli
   ];
 
-  try {
-    const result = await pool.query(query, values);
-    res.status(200).json({ message: "Data inserted", testId: result.rows[0].id });
-  } catch (error) {
-    next(error); // Pass any error to the error handling middleware
-  }
+
+  // Spawn Python process
+  const pythonProcess = spawn('python', ['predict.py', ...dataForPrediction]);
+
+  let pythonOutput = '';
+  let pythonError = '';
+
+  pythonProcess.stdout.on('data', (data) => {
+    pythonOutput += data.toString();
+  });
+
+  pythonProcess.stderr.on('data', (data) => {
+    pythonError += data.toString();
+  });
+
+  pythonProcess.on('close', async (code) => {
+    if (code !== 0) {
+      console.error(`Python script exited with code ${code}, error: ${pythonError}`);
+      return res.status(500).json({ error: 'Error during model prediction', details: pythonError });
+    }
+
+    try {
+      const resultFromPython = JSON.parse(pythonOutput);
+
+      // Send result back to the front end
+      res.status(200).json(resultFromPython);
+
+      const query = `
+        INSERT INTO water_tests (
+            location, test_date, ph_level, turbidity, temperature,
+            electrical_conductivity, dissolved_oxygen, salinity,
+            total_dissolved_solids, hardness, alkalinity, chlorine,
+            total_coliforms, e_coli, water_source, additional_notes, prediction
+          ) VALUES (
+            $1, $2, $3, $4, $5,
+            $6, $7, $8,
+            $9, $10, $11, $12,
+            $13, $14, $15, $16, $17
+          ) RETURNING id;
+        `;
+
+      const values = [...Object.values(data), resultFromPython.status];
+      await pool.query(query, values);
+    } catch (error) {
+      console.error('Error:', error);
+      next(error);
+    }
+  });
 });
 
-// Global Error Handler
 app.use((err, req, res, next) => {
-  console.error(err.stack);  // Log the error stack for debugging
-
-  // If error has a status property, use it. Otherwise, set a 500 default.
+  console.error(err.stack);
   const status = err.status || 500;
   res.status(status).json({ error: err.message || 'Internal Server Error' });
 });

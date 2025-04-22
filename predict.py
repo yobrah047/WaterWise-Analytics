@@ -22,12 +22,14 @@ args = parser.parse_args()
 
 # === Load Trained Model ===
 try:
-    model = xgb.XGBClassifier()
-    model.load_model("xgboost_waterwise.model")
+    model = xgb.Booster()
+    model.load_model("xgboost_waterwise.model")  
 except Exception as e:
+
     print(json.dumps({"error": f"Failed to load model: {e}"}))
     exit(1)
 
+#Correct Order
 # === Prepare Input Data ===
 data = {
     'pH': args.pH,
@@ -43,11 +45,22 @@ data = {
     'total_coliforms': args.total_coliforms,
     'e_coli': args.e_coli
 }
+
 input_data = pd.DataFrame([data])
+
+
+
+expected_cols = ['pH', 'turbidity', 'temperature', 'conductivity', 'dissolved_oxygen', 'salinity', 'total_dissolved_solids', 'hardness', 'alkalinity', 'chlorine']
+input_data = input_data[expected_cols]
 
 # === Predict ===
 try:
-    prediction = model.predict(input_data)[0]
+    dmatrix_input = xgb.DMatrix(input_data, feature_names=input_data.columns)
+except Exception as e:
+    print(json.dumps({"error": f"Failed to create DMatrix: {e}"}))
+    exit(1)
+try:
+    prediction = model.predict(dmatrix_input)[0]
     label = "Safe" if prediction == 1 else "Unsafe"
 except Exception as e:
     print(json.dumps({"error": f"Prediction failed: {e}"}))
