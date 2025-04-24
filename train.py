@@ -5,7 +5,7 @@ import joblib
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, classification_report
 
 # === Load dataset ===
-df = pd.read_excel("balanced_waterwise_dataset_500_500.xlsx")
+df = pd.read_excel("updated_waterwise_dataset_2000.xlsx")
 
 # === Rename and clean column names ===
 df = df.rename(columns={
@@ -89,6 +89,24 @@ print(f"F1-Score:           {f1:.4f}")
 print("\nClassification Report:")
 print(classification_report(y_test, y_pred, zero_division=0))
 print("------------------------\n")
+ 
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
+import matplotlib.pyplot as plt
+
+# Assuming you have your predictions and true labels:
+# y_test = true labels from test set
+# y_pred = model predictions on test set
+
+# 1. Create the confusion matrix
+cm = confusion_matrix(y_test, y_pred)
+
+# 2. Display it
+disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=[0, 1])
+disp.plot(cmap='Blues')  # You can also use 'Reds', 'Greens', etc.
+
+# 3. Show the plot
+plt.title("Confusion Matrix for Water Quality Classifier")
+plt.show()
 
 # === Save model ===
 model.save_model("xgboost_waterwise.model")
