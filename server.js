@@ -129,18 +129,18 @@ app.post("/submit", async (req, res, next) => {
   }
 
   const data = req.body; // Get form data
-    // Prepare data for Python script
+  // Prepare data for Python script
   const dataForPrediction = [
-    '--pH', data.ph,
-    '--turbidity', data.turbidity,
-    '--temperature', data.temperature,
-    '--conductivity', data.conductivity,
-    '--dissolved_oxygen', data.oxygen,
-    '--salinity', data.salinity,
-    '--total_dissolved_solids', data.tds, // Corrected typo here
-    '--hardness', data.hardness,
-    '--alkalinity', data.alkalinity,
-    '--chlorine', data.chlorine,
+      '--pH', data.ph,
+      '--turbidity', data.turbidity,
+      '--temperature', data.temperature,
+      '--conductivity', data.conductivity,
+      '--dissolved_oxygen', data.oxygen,
+      '--salinity', data.salinity,
+      '--total_dissolved_solids', data.tds, 
+      '--hardness', data.hardness,
+      '--alkalinity', data.alkalinity,
+      '--chlorine', data.chlorine,
       '--total_coliforms', data.total_coliforms,
       '--e_coli', data.e_coli
   ];

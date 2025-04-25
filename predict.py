@@ -48,11 +48,6 @@ data = {
 
 input_data = pd.DataFrame([data])
 
-
-
-expected_cols = ['pH', 'turbidity', 'temperature', 'conductivity', 'dissolved_oxygen', 'salinity', 'total_dissolved_solids', 'hardness', 'alkalinity', 'chlorine']
-input_data = input_data[expected_cols]
-
 # === Predict ===
 try:
     dmatrix_input = xgb.DMatrix(input_data, feature_names=input_data.columns)
