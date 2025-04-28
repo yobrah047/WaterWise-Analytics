@@ -4,9 +4,11 @@ import xgboost as xgb
 import joblib
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, classification_report
 
-# === Load dataset ===
+# === 1. Load dataset ===
+# Load the dataset from an Excel file
 df = pd.read_excel("updated_waterwise_dataset_2000.xlsx")
 
+# ===============================================================
 # === Rename and clean column names ===
 df = df.rename(columns={
     "ph level ": "pH",
@@ -26,31 +28,42 @@ df = df.rename(columns={
     "Date": "date",
     "Additional notes ": "notes"
 })
-
-# === Drop unused columns ===
+# ===============================================================
+# === 2. Drop unused columns ===
+# Drop columns that are not needed for the model
 df = df.drop(columns=["location", "water_source", "date", "notes"], errors="ignore")
 
-# === Handle missing values ===
+# ===============================================================
+# === 3. Handle missing values ===
+# Calculate the number of rows before removing missing values
 original_rows = len(df)
+# Remove rows with any missing values
 df = df.dropna()
+# Calculate the number of rows dropped
 dropped_rows = original_rows - len(df)
 
-# === Add 'label' column: 1 = Safe, 0 = Unsafe ===
+# ===============================================================
+# === 4. Add 'label' column: 1 = Safe, 0 = Unsafe ===
+# Check if 'e_coli' and 'total_coliforms' columns exist
 if 'e_coli' in df.columns and 'total_coliforms' in df.columns:
+    # Create the 'label' column based on 'e_coli' and 'total_coliforms'
     df["label"] = df.apply(lambda row: 1 if row["e_coli"] == 0 and row["total_coliforms"] == 0 else 0, axis=1)
+    # Check if only one class is present in the 'label' column
     if df["label"].nunique() < 2:
         print("Error: The dataset contains only one class after processing. Cannot train model.")
         print(df['label'].value_counts())
         exit()
 else:
+    # Print an error message if 'e_coli' or 'total_coliforms' is missing
     print("Error: 'e_coli' or 'total_coliforms' column not found after cleaning/dropping NAs.")
     exit()
-
-# === Split features and target ===
+# ===============================================================
+# === 5. Split features and target ===
+# Separate the features (X) and target (y) variables
 X = df.drop(columns=["label", "e_coli", "total_coliforms"], errors='ignore')
 y = df["label"]
-
-# === Train/test split ===
+# ===============================================================
+# === 6. Train/test split ===
 if len(X) < 2 or len(y) < 2:
     print(f"Error: Not enough data to perform train/test split after processing. Data points: {len(X)}")
     exit()
@@ -64,12 +77,16 @@ except ValueError as e:
     print(f"Dataset size: {len(X)}")
     print("Label distribution:")
     print(y.value_counts())
-    exit()
-
-# === Train model ===
+    exit()   
+# ===============================================================
+# === 7. Train model ===
+# Initialize and train the XGBoost model
 model = xgb.XGBClassifier(random_state=42, use_label_encoder=False, eval_metric='logloss')
 model.fit(X_train, y_train)
 
+# ===============================================================
+# === 8. Evaluate model ===
+# Predict on the test set and calculate evaluation metrics
 # === Evaluate model ===
 y_pred = model.predict(X_test)
 accuracy = accuracy_score(y_test, y_pred)
@@ -77,6 +94,7 @@ precision = precision_score(y_test, y_pred, zero_division=0)
 recall = recall_score(y_test, y_pred, zero_division=0)
 f1 = f1_score(y_test, y_pred, zero_division=0)
 
+# Print model evaluation results
 print("\n--- Model Evaluation ---")
 print(f"Rows before dropna: {original_rows}")
 print(f"Rows after dropna:  {len(df)} (Dropped: {dropped_rows})")
@@ -90,26 +108,26 @@ print("\nClassification Report:")
 print(classification_report(y_test, y_pred, zero_division=0))
 print("------------------------\n")
  
+# ===============================================================
+# === 9. Confution matrix ===
+# Import necessary libraries for confusion matrix visualization
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 import matplotlib.pyplot as plt
 
-# Assuming you have your predictions and true labels:
-# y_test = true labels from test set
-# y_pred = model predictions on test set
-
-# 1. Create the confusion matrix
+# Create the confusion matrix
 cm = confusion_matrix(y_test, y_pred)
 
-# 2. Display it
+# Display the confusion matrix
 disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=[0, 1])
-disp.plot(cmap='Blues')  # You can also use 'Reds', 'Greens', etc.
+disp.plot(cmap='Blues')
 
-# 3. Show the plot
+# Show the plot with a title
 plt.title("Confusion Matrix for Water Quality Classifier")
 plt.show()
-
-# === Save model ===
+# ===============================================================
+# === 10. Save model ===
+# Save the trained model to a file
 model.save_model("xgboost_waterwise.model")
 joblib.dump(model, "xgboost_waterwise.joblib")
-
+# Confirmation message
 print("✅ Model trained, evaluated, and saved successfully with clean column names!")

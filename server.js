@@ -129,24 +129,56 @@ app.post("/submit", async (req, res, next) => {
   }
 
   const data = req.body; // Get form data
-  // Prepare data for Python script
-  const dataForPrediction = [
-      '--pH', data.ph,
-      '--turbidity', data.turbidity,
-      '--temperature', data.temperature,
-      '--conductivity', data.conductivity,
-      '--dissolved_oxygen', data.oxygen,
-      '--salinity', data.salinity,
-      '--total_dissolved_solids', data.tds, 
-      '--hardness', data.hardness,
-      '--alkalinity', data.alkalinity,
-      '--chlorine', data.chlorine,
-      '--total_coliforms', data.total_coliforms,
-      '--e_coli', data.e_coli
+  console.log("Received data for prediction:", data);
+
+  // Validate required fields
+  const requiredFields = [
+    "ph",
+    "turbidity",
+    "temperature",
+    "conductivity",
+    "oxygen",
+    "salinity",
+    "tds",
+    "hardness",
+    "alkalinity",
+    "chlorine",
+    "total_coliforms",
+    "e_coli"
   ];
 
+  for (const field of requiredFields) {
+    if (data[field] === undefined || data[field] === null || data[field] === '') {
+      const error = new Error(`Missing or empty required field: ${field}`);
+      error.status = 400;
+      return next(error);
+    }
+    // Validate that the field can be converted to a float
+    if (isNaN(parseFloat(data[field]))) {
+      const error = new Error(`Invalid number for field: ${field}`);
+      error.status = 400;
+      return next(error);
+    }
+  }
+
+  // Prepare data for Python script
+  const dataForPrediction = [
+      '--pH', parseFloat(data.ph),
+      '--turbidity', parseFloat(data.turbidity),
+      '--temperature', parseFloat(data.temperature),
+      '--conductivity', parseFloat(data.conductivity),
+      '--dissolved_oxygen', parseFloat(data.oxygen),
+      '--salinity', parseFloat(data.salinity),
+      '--total_dissolved_solids', parseFloat(data.tds), 
+      '--hardness', parseFloat(data.hardness),
+      '--alkalinity', parseFloat(data.alkalinity),
+      '--chlorine', parseFloat(data.chlorine),
+      '--total_coliforms', parseFloat(data.total_coliforms),
+      '--e_coli', parseFloat(data.e_coli)
+  ];
 
   // Spawn Python process
+  console.log('Spawning Python process with args:', ['predict.py', ...dataForPrediction]);
   const pythonProcess = spawn('python', ['predict.py', ...dataForPrediction]);
 
   let pythonOutput = '';
@@ -162,8 +194,8 @@ app.post("/submit", async (req, res, next) => {
 
   pythonProcess.on('close', async (code) => {
     if (code !== 0) {
-      console.error(`Python script exited with code ${code}, error: ${pythonError}`);
-      return res.status(500).json({ error: 'Error during model prediction', details: pythonError });
+      console.error(`Python script exited with code ${code}, stdout: ${pythonOutput}, stderr: ${pythonError}`);
+      return res.status(500).json({ error: 'Error during model prediction', details: pythonOutput });
     }
 
     try {
@@ -177,16 +209,16 @@ app.post("/submit", async (req, res, next) => {
             location, test_date, ph_level, turbidity, temperature,
             electrical_conductivity, dissolved_oxygen, salinity,
             total_dissolved_solids, hardness, alkalinity, chlorine,
-            total_coliforms, e_coli, water_source, additional_notes, prediction
+            total_coliforms, e_coli, water_source, additional_notes
           ) VALUES (
             $1, $2, $3, $4, $5,
             $6, $7, $8,
             $9, $10, $11, $12,
-            $13, $14, $15, $16, $17
+            $13, $14, $15, $16
           ) RETURNING id;
         `;
 
-      const values = [...Object.values(data), resultFromPython.status];
+      const values = [...Object.values(data)];
       await pool.query(query, values);
     } catch (error) {
       console.error('Error:', error);

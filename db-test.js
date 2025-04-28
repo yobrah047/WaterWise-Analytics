@@ -1,10 +1,14 @@
+// Load environment variables from .env file
 require("dotenv").config();
+
+// Import the Pool class from the 'pg' module
 const { Pool } = require("pg");
 
-// Set up PostgreSQL connection
+// Set up PostgreSQL connection using environment variables
 const pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
-    ssl: process.env.DATABASE_URL.includes("localhost") ? false : { rejectUnauthorized: false }
+  connectionString: process.env.DATABASE_URL, // Connection string from environment variable
+  // Disable SSL if running on localhost, otherwise use SSL with rejectUnauthorized set to false
+  ssl: process.env.DATABASE_URL.includes("localhost") ? false : { rejectUnauthorized: false },
 });
 
 async function testInsert() {
@@ -20,8 +24,9 @@ async function testInsert() {
         total_dissolved_solids: 450,
         hardness: 120,
         alkalinity: 85,
-        chlorine: 0.3,
-        coliform_bacteria: "No",
+        chlorine: 0.3, //
+        coliform_bacteria: "No", //
+        //
         water_source: "Spring",
         additional_notes: "Test insert via script"
     };
@@ -59,13 +64,16 @@ async function testInsert() {
         sampleData.additional_notes
     ];
 
+    // Execute the SQL query to insert data
     try {
         const result = await pool.query(query, values);
+        // Log success message with the ID of the inserted row
         console.log("✅ Data inserted successfully. Test ID:", result.rows[0].id);
     } catch (err) {
+        // Log any errors that occur during insertion
         console.error("❌ Error inserting test data:", err.message);
     } finally {
-        await pool.end();
+        await pool.end(); // Close the database connection pool
     }
 }
 

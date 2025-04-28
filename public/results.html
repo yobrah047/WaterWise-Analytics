@@ -3,6 +3,34 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+      nav ul {
+          list-style: none;
+          padding: 0;
+          display: flex;
+          justify-content: center;
+          background: rgba(30, 30, 30, 0.8);
+          border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+          margin-bottom: 2rem;
+          padding: 1rem;
+          border-radius: 15px;
+      }
+
+      nav li {
+          margin: 0 1rem;
+      }
+
+      nav a {
+          color: #ffffff;
+          text-decoration: none;
+          font-weight: 600;
+          transition: color 0.3s ease;
+      }
+
+      nav a:hover {
+          color: #007BFF;
+      }
+  </style>
   <title>Model Results</title>
   <style>
     * {
@@ -72,6 +100,13 @@
   </style>
 </head>
 <body>
+  <nav>
+      <ul>
+          <li><a href="/index.html">Form</a></li>
+          <li><a href="/auth.html">Auth</a></li>
+          <li><a href="/results.html">Results</a></li>
+      </ul>
+  </nav>
   <button class="fullscreen-button" onclick="toggleFullScreen()">
     Fullscreen
   </button>
