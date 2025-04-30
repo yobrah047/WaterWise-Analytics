@@ -172,17 +172,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
                 if (response.ok) {
                     const result = await response.json();
-                    const { status, recommendations } = result;
-
-                    // Update current page with results
-                    const resultsDiv = document.getElementById('results');
-                    resultsDiv.innerHTML = `
-                        <h3>Prediction: ${status}</h3>
-                        ${recommendations.length > 0 ? '<h4>Recommendations:</h4>' : ''}
-                        <ul>
-                            ${recommendations.map(rec => `<li>${rec}</li>`).join('')}
-                        </ul>
-                    `;
+                    localStorage.setItem('predictionResult', JSON.stringify(result));
+                    window.location.href = '/results.html'; // Redirect to results page
 
                 } else if (response.status === 401) {
                     const resultsDiv = document.getElementById('results');

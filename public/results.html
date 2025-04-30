@@ -138,6 +138,29 @@
         }
       }
     }
+
+     function displayResultsFromLocalStorage() {
+      const resultsDiv = document.getElementById('results');
+      const resultsData = localStorage.getItem('waterTestResults');
+
+      if (!resultsData) {
+        resultsDiv.innerHTML = '<p>No results available. Please submit the form first.</p>';
+        return;
+      }
+
+      try {
+        const results = JSON.parse(resultsData);
+        const { status, recommendations } = results;
+        const formattedRecommendations = recommendations.map(rec => `<li>${rec}</li>`).join('');
+        resultsDiv.innerHTML = `<h3>Prediction Status: ${status}</h3><h4>Recommendations:</h4><ul>${formattedRecommendations}</ul>`;
+        localStorage.removeItem('waterTestResults');
+      } catch (e) {
+        resultsDiv.innerHTML = '<p>Failed to display results.</p>';
+        console.error(e);
+      }
+    }
+
+    displayResultsFromLocalStorage();
   </script>
 </body>
 </html>

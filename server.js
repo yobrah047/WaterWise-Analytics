@@ -120,6 +120,31 @@ app.get("/api/logout", (req, res, next) => {
   });
 });
 
+
+
+let latestPredictionResult = null;
+// GET route to send prediction data
+app.get('/api/get-results', (req, res, next) => {
+  if (!req.session.userId) {
+    const error = new Error("Unauthorized");
+    error.status = 401;
+    return next(error);
+  }
+
+  if (latestPredictionResult) {
+    res.json(latestPredictionResult);
+    latestPredictionResult = null;
+  }
+   else {
+    res.status(404).json({ error: "No results available." });
+  }
+});
+
+
+
+
+
+
 // 🧪 Protected water test submission
 app.post("/submit", async (req, res, next) => {
   if (!req.session.userId) {
@@ -201,7 +226,11 @@ app.post("/submit", async (req, res, next) => {
     try {
       const resultFromPython = JSON.parse(pythonOutput);
 
-      // Send result back to the front end
+      // Store the result in the variable
+      latestPredictionResult = resultFromPython;
+
+
+      // Send result back to the front end after submiting
       res.status(200).json(resultFromPython);
 
       const query = `
@@ -224,7 +253,7 @@ app.post("/submit", async (req, res, next) => {
       console.error('Error:', error);
       next(error);
     }
-  });
+  }); 
 });
 
 app.use((err, req, res, next) => {

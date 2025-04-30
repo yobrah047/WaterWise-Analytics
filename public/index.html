@@ -278,7 +278,7 @@
 
                 if (response.ok) {
                     alert('✅ Form submitted successfully!');
-                    // Optionally, redirect or clear form after submission
+                    window.location.href = "/results.html"
                 } else {
                     alert('❌ Error: ' + (result.error || 'Unknown error'));
                 }
