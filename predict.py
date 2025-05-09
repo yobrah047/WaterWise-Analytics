@@ -139,6 +139,11 @@ def main():
 
     try:
         recommendations = generate_recommendations(data)
+        # Add a general recommendation if the label is "Unsafe" and no specific recommendations were added.
+        if label == "Unsafe" and not recommendations:
+            recommendations.append(
+                "Overall prediction is Unsafe. While individual parameters appear within typical ranges, the model indicates potential issues. Consider further testing or professional assessment before use."
+            )
     except Exception as e:
         print(json.dumps({"error": f"Recommendation generation failed: {e}", "traceback": traceback.format_exc()}))
         sys.exit(1)

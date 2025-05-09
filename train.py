@@ -1,133 +1,159 @@
 import pandas as pd
-from sklearn.model_selection import train_test_split
+import numpy as np
 import xgboost as xgb
+from xgboost import XGBClassifier
+from sklearn.model_selection import train_test_split, StratifiedKFold, GridSearchCV
+from sklearn.metrics import classification_report, confusion_matrix, roc_auc_score, precision_recall_curve, auc, recall_score, make_scorer
 import joblib
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, classification_report
+import argparse
+import sys
 
-# === 1. Load dataset ===
-# Load the dataset from an Excel file
-df = pd.read_excel("updated_waterwise_dataset_2000.xlsx")
 
-# ===============================================================
-# === Rename and clean column names ===
-df = df.rename(columns={
-    "ph level ": "pH",
-    "turbidity": "turbidity",
-    "tempreture": "temperature",
-    "electrcal conductivity": "conductivity",
-    "Dissolved oxygen": "dissolved_oxygen",
-    "salinity": "salinity",
-    "Total dissolved solids": "total_dissolved_solids",
-    "Hardness": "hardness",
-    "Alkalinity": "alkalinity",
-    "chlorine": "chlorine",
-    "total coliforms": "total_coliforms",
-    "E.coli": "e_coli",
-    "location ": "location",
-    "Water source": "water_source",
-    "Date": "date",
-    "Additional notes ": "notes"
-})
-# ===============================================================
-# === 2. Drop unused columns ===
-# Drop columns that are not needed for the model
-df = df.drop(columns=["location", "water_source", "date", "notes"], errors="ignore")
+def load_and_prepare(path):
+    # Load Excel or CSV
+    if path.endswith(('.xlsx', '.xls')):
+        df = pd.read_excel(path)
+    else:
+        df = pd.read_csv(path)
 
-# ===============================================================
-# === 3. Handle missing values ===
-# Calculate the number of rows before removing missing values
-original_rows = len(df)
-# Remove rows with any missing values
-df = df.dropna()
-# Calculate the number of rows dropped
-dropped_rows = original_rows - len(df)
-
-# ===============================================================
-# === 4. Add 'label' column: 1 = Safe, 0 = Unsafe ===
-# Check if 'e_coli' and 'total_coliforms' columns exist
-if 'e_coli' in df.columns and 'total_coliforms' in df.columns:
-    # Create the 'label' column based on 'e_coli' and 'total_coliforms'
-    df["label"] = df.apply(lambda row: 1 if row["e_coli"] == 0 and row["total_coliforms"] == 0 else 0, axis=1)
-    # Check if only one class is present in the 'label' column
-    if df["label"].nunique() < 2:
-        print("Error: The dataset contains only one class after processing. Cannot train model.")
-        print(df['label'].value_counts())
-        exit()
-else:
-    # Print an error message if 'e_coli' or 'total_coliforms' is missing
-    print("Error: 'e_coli' or 'total_coliforms' column not found after cleaning/dropping NAs.")
-    exit()
-# ===============================================================
-# === 5. Split features and target ===
-# Separate the features (X) and target (y) variables
-X = df.drop(columns=["label", "e_coli", "total_coliforms"], errors='ignore')
-y = df["label"]
-# ===============================================================
-# === 6. Train/test split ===
-if len(X) < 2 or len(y) < 2:
-    print(f"Error: Not enough data to perform train/test split after processing. Data points: {len(X)}")
-    exit()
-
-try:
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=42, stratify=y if y.nunique() > 1 else None
+    # Standardize column names
+    df.columns = (
+        df.columns.str.strip()
+                 .str.lower()
+                 .str.replace(' ', '_')
+                 .str.replace('-', '_')
     )
-except ValueError as e:
-    print(f"Error during train/test split: {e}")
-    print(f"Dataset size: {len(X)}")
-    print("Label distribution:")
-    print(y.value_counts())
-    exit()   
-# ===============================================================
-# === 7. Train model ===
-# Initialize and train the XGBoost model
-model = xgb.XGBClassifier(random_state=42, use_label_encoder=False, eval_metric='logloss')
-model.fit(X_train, y_train)
+    # Rename 'ph' to 'pH' to match prediction script
+    if 'ph' in df.columns:
+        df = df.rename(columns={'ph': 'pH'})
 
-# ===============================================================
-# === 8. Evaluate model ===
-# Predict on the test set and calculate evaluation metrics
-# === Evaluate model ===
-y_pred = model.predict(X_test)
-accuracy = accuracy_score(y_test, y_pred)
-precision = precision_score(y_test, y_pred, zero_division=0)
-recall = recall_score(y_test, y_pred, zero_division=0)
-f1 = f1_score(y_test, y_pred, zero_division=0)
+    # Drop incomplete microbial data
+    df = df.dropna(subset=['total_coliforms', 'e_coli'])
 
-# Print model evaluation results
-print("\n--- Model Evaluation ---")
-print(f"Rows before dropna: {original_rows}")
-print(f"Rows after dropna:  {len(df)} (Dropped: {dropped_rows})")
-print(f"Training set size:  {len(X_train)}")
-print(f"Test set size:      {len(X_test)}")
-print(f"Accuracy:           {accuracy:.4f}")
-print(f"Precision:          {precision:.4f}")
-print(f"Recall:             {recall:.4f}")
-print(f"F1-Score:           {f1:.4f}")
-print("\nClassification Report:")
-print(classification_report(y_test, y_pred, zero_division=0))
-print("------------------------\n")
- 
-# ===============================================================
-# === 9. Confution matrix ===
-# Import necessary libraries for confusion matrix visualization
-from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
-import matplotlib.pyplot as plt
+    # Label: unsafe if any microbial contamination
+    df['label'] = np.where((df['total_coliforms'] > 0) | (df['e_coli'] > 0), 1, 0)
 
-# Create the confusion matrix
-cm = confusion_matrix(y_test, y_pred)
+    # Select features
+    features = [
+        'pH', 'turbidity', 'temperature', 'conductivity',
+        'dissolved_oxygen', 'salinity', 'total_dissolved_solids',
+        'hardness', 'alkalinity', 'chlorine'
+    ]
+    X = df[features]
+    y = df['label']
+    return X, y
 
-# Display the confusion matrix
-disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=[0, 1])
-disp.plot(cmap='Blues')
 
-# Show the plot with a title
-plt.title("Confusion Matrix for Water Quality Classifier")
-plt.show()
-# ===============================================================
-# === 10. Save model ===
-# Save the trained model to a file
-model.save_model("xgboost_waterwise.model")
-joblib.dump(model, "xgboost_waterwise.joblib")
-# Confirmation message
-print("✅ Model trained, evaluated, and saved successfully with clean column names!")
+def oversample_train_df(train_df, label_col='label', random_state=42):
+    # Identify majority/minority classes
+    counts = train_df[label_col].value_counts()
+    maj = counts.idxmax()
+    min_ = counts.idxmin()
+    n = counts.max()
+
+    df_maj = train_df[train_df[label_col] == maj]
+    df_min = train_df[train_df[label_col] == min_]
+
+    # Upsample minority
+    df_min_up = df_min.sample(n=n, replace=True, random_state=random_state)
+
+    # Combine and shuffle
+    df_res = pd.concat([df_maj, df_min_up], axis=0)
+    df_res = df_res.sample(frac=1, random_state=random_state).reset_index(drop=True)
+    return df_res
+
+
+def main():
+    parser = argparse.ArgumentParser(description='Retrain WaterWise XGBoost model with oversampling and threshold tuning')
+    parser.add_argument('--data', type=str, required=True, help='Path to labeled dataset (CSV or Excel)')
+    parser.add_argument('--output', type=str, default='xgboost_waterwise.model', help='Output model filename')
+    args = parser.parse_args()
+
+    # Load and prepare data
+    try:
+        X, y = load_and_prepare(args.data)
+    except Exception as e:
+        print(f"Error loading data: {e}")
+        sys.exit(1)
+
+    # Combine for splitting
+    df_all = pd.concat([X, y.rename('label')], axis=1)
+    train_df, test_df = train_test_split(df_all, test_size=0.2, random_state=42, stratify=df_all['label'])
+
+    # Oversample training data
+    res_df = oversample_train_df(train_df)
+    print(f"Resampled training distribution: {res_df['label'].value_counts().to_dict()}")
+
+    X_res = res_df.drop(columns='label')
+    y_res = res_df['label']
+    X_test = test_df.drop(columns='label')
+    y_test = test_df['label']
+
+    # Initialize classifier
+    clf = XGBClassifier(
+        objective='binary:logistic',
+        eval_metric='logloss',
+        use_label_encoder=False,
+        random_state=42
+    )
+
+    # Hyperparameter grid
+    param_grid = {
+        'max_depth': [3, 5, 7],
+        'learning_rate': [0.01, 0.1],
+        'subsample': [0.7, 0.9],
+        'colsample_bytree': [0.7, 0.9]
+    }
+
+    # Scoring metrics
+    scoring = {
+        'safe_recall': make_scorer(recall_score, pos_label=0),
+        'unsafe_recall': make_scorer(recall_score, pos_label=1),
+        'f1_macro': 'f1_macro'
+    }
+
+    cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+    grid = GridSearchCV(
+        clf,
+        param_grid,
+        scoring=scoring,
+        refit='safe_recall',
+        cv=cv,
+        verbose=1,
+        n_jobs=-1
+    )
+
+    # Train
+    grid.fit(X_res, y_res)
+    best = grid.best_estimator_
+    print("Best parameters based on safe recall:", grid.best_params_)
+
+    # Evaluate on test set
+    y_pred = best.predict(X_test)
+    y_prob = best.predict_proba(X_test)[:, 1]
+
+    print("\n--- Test Evaluation ---")
+    print(classification_report(y_test, y_pred, digits=4))
+    print("Confusion Matrix:\n", confusion_matrix(y_test, y_pred))
+    print(f"ROC AUC: {roc_auc_score(y_test, y_prob):.4f}")
+    precision, recall, _ = precision_recall_curve(y_test, y_prob)
+    print(f"PR AUC: {auc(recall, precision):.4f}")
+
+    # Threshold tuning
+    best_t, best_sum = 0.5, 0
+    print("\n--- Threshold Tuning ---")
+    for t in np.linspace(0.1, 0.9, 9):
+        preds = (y_prob > t).astype(int)
+        s = recall_score(y_test, preds, pos_label=0) + recall_score(y_test, preds, pos_label=1)
+        print(f"Threshold {t:.2f} -> Safe recall: {recall_score(y_test, preds, pos_label=0):.3f}, Unsafe recall: {recall_score(y_test, preds, pos_label=1):.3f}")
+        if s > best_sum:
+            best_sum, best_t = s, t
+    print(f"Selected threshold: {best_t:.2f} (sum recall: {best_sum:.3f})")
+
+    # Save model and threshold
+    best.get_booster().save_model(args.output)
+    joblib.dump({'model': best, 'threshold': best_t}, args.output + '.joblib')
+    print(f"Model and threshold saved to {args.output} and {args.output}.joblib")
+
+if __name__ == '__main__':
+    main()

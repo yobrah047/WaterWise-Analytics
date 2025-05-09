@@ -3,164 +3,232 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Model Results | WaterWise Analytics</title>
   <style>
-      nav ul {
-          list-style: none;
-          padding: 0;
-          display: flex;
-          justify-content: center;
-          background: rgba(30, 30, 30, 0.8);
-          border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-          margin-bottom: 2rem;
-          padding: 1rem;
-          border-radius: 15px;
-      }
-
-      nav li {
-          margin: 0 1rem;
-      }
-
-      nav a {
-          color: #ffffff;
-          text-decoration: none;
-          font-weight: 600;
-          transition: color 0.3s ease;
-      }
-
-      nav a:hover {
-          color: #007BFF;
-      }
-  </style>
-  <title>Model Results</title>
-  <style>
+    /* Reset & Base */
     * {
       box-sizing: border-box;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       margin: 0;
       padding: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     }
-
     body {
       background: linear-gradient(135deg, #121212 0%, #000000 100%);
-      margin: 0;
-      padding: 0;
+      color: #e0e0e0;
       min-height: 100vh;
-      color: #ffffff;
-    }
-
-    .results-container {
-      background: rgba(30, 30, 30, 0.8);
-      width: 90%;
-      max-width: 800px;
-      margin: 2rem auto;
-      padding: 2.5rem;
-      border-radius: 15px;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
       display: flex;
       flex-direction: column;
-      gap: 1.5rem;
+    }
+    /* Navigation */
+    nav {
+      background: rgba(30, 30, 30, 0.8);
+      backdrop-filter: blur(8px);
+      padding: 1rem;
+      border-radius: 0 0 15px 15px;
+      box-shadow: 0 3px 6px rgba(0,0,0,0.5);
+    }
+    nav ul {
+      list-style: none;
+      display: flex;
+      justify-content: center;
+      gap: 2rem;
+    }
+    nav a {
+      color: #fff;
+      text-decoration: none;
+      font-weight: 600;
+      transition: color 0.3s;
+    }
+    nav a:hover {
+      color: #4EA8DE;
+    }
+
+    /* Container */
+    .container {
+      flex: 1;
+      width: 90%;
+      max-width: 900px;
+      margin: 2rem auto;
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 2rem;
+    }
+
+    /* Card Component */
+    .card {
+      background: rgba(30, 30, 30, 0.8);
       backdrop-filter: blur(10px);
       border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 15px;
+      padding: 2rem;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
     }
-
-    h2 {
+    .card h2 {
+      font-size: 1.8rem;
+      margin-bottom: 1rem;
+      color: #fff;
       text-align: center;
-      color: #ffffff;
-      margin-bottom: 1.5rem;
-      font-size: 2.2rem;
-      font-weight: 600;
-      letter-spacing: 1px;
-      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+      letter-spacing: 0.5px;
     }
 
-    #results {
-      font-size: 1.1rem;
+    /* Status Badge */
+    .status-badge {
+      display: inline-block;
+      padding: 0.5rem 1rem;
+      border-radius: 50px;
+      font-weight: 700;
+      font-size: 1.2rem;
+    }
+    .status-safe {
+      background: #28a745;
+      color: #fff;
+    }
+    .status-unsafe {
+      background: #dc3545;
+      color: #fff;
+    }
+
+    /* Lists */
+    .card ul {
+      margin-top: 1rem;
+      list-style: disc inside;
       line-height: 1.6;
-      color: #e0e0e0;
-      white-space: pre-wrap; 
     }
 
+    /* Data Table */
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 1rem;
+    }
+    .data-table th,
+    .data-table td {
+      border: 1px solid rgba(255,255,255,0.1);
+      padding: 0.75rem;
+      text-align: left;
+    }
+    .data-table th {
+      background: rgba(50,50,50,0.8);
+    }
+
+    /* Fullscreen Button */
     .fullscreen-button {
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        background: rgba(30, 30, 30, 0.8);
-        color: #ffffff;
-        border: none;
-        padding: 10px 15px;
-        border-radius: 8px;
-        cursor: pointer;
-        z-index: 1000;
-        transition: background-color 0.3s ease;
-      }
-    
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: rgba(30, 30, 30, 0.8);
+      color: #fff;
+      border: none;
+      padding: 0.75rem 1.25rem;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background-color 0.3s;
+      z-index: 1000;
+    }
     .fullscreen-button:hover {
-      background-color: #0056b3;
+      background: #4EA8DE;
     }
   </style>
 </head>
 <body>
   <nav>
-      <ul>
-          <li><a href="/index.html">Form</a></li>
-          <li><a href="/auth.html">Auth</a></li>
-          <li><a href="/results.html">Results</a></li>
-      </ul>
+    <ul>
+      <li><a href="/index.html">Form</a></li>
+      <li><a href="/auth.html">Auth</a></li>
+      <li><a href="/results.html">Results</a></li>
+    </ul>
   </nav>
-  <button class="fullscreen-button" onclick="toggleFullScreen()">
-    Fullscreen
-  </button>
-  <div class="results-container">
-    <h2>Model Results</h2>
-    <div id="results"></div>
+
+  <button class="fullscreen-button" onclick="toggleFullScreen()">Fullscreen</button>
+
+  <div class="container">
+
+    <!-- Prediction Status -->
+    <div class="card" id="status-card">
+      <h2>Prediction Status</h2>
+      <div id="status-prev"></div>
+    </div>
+
+    <!-- Recommendations -->
+    <div class="card" id="recommendations-card">
+      <h2>Recommendations</h2>
+      <div id="recommendations-prev"></div>
+    </div>
+
+    <!-- Input Data -->
+    <div class="card" id="input-data-card">
+      <h2>Input Data</h2>
+      <div id="input-data-prev"></div>
+    </div>
+
   </div>
+
   <script>
     function toggleFullScreen() {
       if (!document.fullscreenElement) {
-        if (document.documentElement.requestFullscreen) {
-          document.documentElement.requestFullscreen();
-        } else if (document.documentElement.mozRequestFullScreen) {
-          document.documentElement.mozRequestFullScreen();
-        } else if (document.documentElement.webkitRequestFullscreen) {
-          document.documentElement.webkitRequestFullscreen();
-        } else if (document.documentElement.msRequestFullscreen) {
-          document.documentElement.msRequestFullscreen();
-        }
+        document.documentElement.requestFullscreen();
       } else {
-        if (document.exitFullscreen) {
-          document.exitFullscreen();
-        } else if (document.mozCancelFullScreen) {
-          document.mozCancelFullScreen();
-        } else if (document.webkitExitFullscreen) {
-          document.webkitExitFullscreen();
-        } else if (document.msExitFullscreen) {
-          document.msExitFullscreen();
-        }
+        document.exitFullscreen();
       }
     }
 
-     function displayResultsFromLocalStorage() {
-      const resultsDiv = document.getElementById('results');
-      const resultsData = localStorage.getItem('predictionResult');
-
-      if (!resultsData) {
-        resultsDiv.innerHTML = '<p>No results available. Please submit the form first.</p>';
+    function displayResultsFromLocalStorage() {
+      const raw = localStorage.getItem('predictionResult');
+      if (!raw) {
+        document.getElementById('status-prev').innerHTML = '<p>No results available. Submit the form first.</p>';
         return;
       }
+      try {
+        const { status, recommendations, input_data } = JSON.parse(raw);
+        // Status
+        const statDiv = document.createElement('span');
+        statDiv.className = `status-badge status-${status.toLowerCase()}`;
+        statDiv.textContent = status;
+        document.getElementById('status-prev').appendChild(statDiv);
 
-     try {
-        const results = JSON.parse(resultsData);
-        const { status, recommendations } = results;
-        const formattedRecommendations = recommendations.map(rec => `<li>${rec}</li>`).join('');
-        resultsDiv.innerHTML = `<h3>Prediction Status: ${status}</h3><h4>Recommendations:</h4><ul>${formattedRecommendations}</ul>`;
-        localStorage.removeItem('waterTestResults');
+        // Recommendations List
+        if (recommendations.length) {
+          const ul = document.createElement('ul');
+          recommendations.forEach(r => {
+            const li = document.createElement('li'); li.textContent = r;
+            ul.appendChild(li);
+          });
+          document.getElementById('recommendations-prev').appendChild(ul);
+        } else {
+          document.getElementById('recommendations-prev').innerHTML = '<p>No specific recommendations. Water quality is optimal.</p>';
+        }
+
+        // Input Data Table
+        const table = document.createElement('table');
+        table.className = 'data-table';
+        const thead = document.createElement('thead');
+        const headerRow = document.createElement('tr');
+        ['Parameter','Value'].forEach(h => {
+          const th = document.createElement('th'); th.textContent = h;
+          headerRow.appendChild(th);
+        });
+        thead.appendChild(headerRow);
+        table.appendChild(thead);
+        const tbody = document.createElement('tbody');
+        Object.entries(input_data).forEach(([key, val]) => {
+          const row = document.createElement('tr');
+          let displayKey = key.replace(/_/g,' ').replace(/\b\w/g, l=> l.toUpperCase());
+          const tdKey = document.createElement('td'); tdKey.textContent = displayKey;
+          const tdVal = document.createElement('td'); tdVal.textContent = val;
+          row.appendChild(tdKey); row.appendChild(tdVal);
+          tbody.appendChild(row);
+        });
+        table.appendChild(tbody);
+        document.getElementById('input-data-prev').appendChild(table);
+
+        localStorage.removeItem('predictionResult');
       } catch (e) {
-        resultsDiv.innerHTML = '<p>Failed to display results.</p>';
         console.error(e);
+        document.getElementById('status-prev').innerHTML = '<p>Error displaying results.</p>';
       }
     }
 
-    displayResultsFromLocalStorage();
+    document.addEventListener('DOMContentLoaded', displayResultsFromLocalStorage);
   </script>
 </body>
 </html>
