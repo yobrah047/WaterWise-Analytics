@@ -1,51 +1,42 @@
-
 import pandas as pd
 import xgboost as xgb
 import argparse
-import json  # Import the json module for JSON handling
+import json
 import sys
 import traceback
 
 def main():
     # === Setup Argument Parser === #
     try:
-        parser = argparse.ArgumentParser(
-            description="Predict water safety based on input parameters."
-        )
-        parser.add_argument("--pH", type=float, required=True, help="pH level of the water")
-        parser.add_argument("--turbidity", type=float, required=True, help="Turbidity level of the water (NTU)")
-        parser.add_argument("--temperature", type=float, required=True, help="Temperature of the water in Celsius")
-        parser.add_argument("--conductivity", type=float, required=True, help="Electrical conductivity of the water (µS/cm)")
-        parser.add_argument(
-            "--dissolved_oxygen", type=float, required=True, help="Dissolved oxygen level in the water (mg/L)"
-        )
-        parser.add_argument("--salinity", type=float, required=True, help="Salinity of the water (ppt)")
-        parser.add_argument("--total_dissolved_solids", type=float, required=True, help="Total dissolved solids in the water (mg/L)")
-        parser.add_argument("--hardness", type=float, required=True, help="Hardness of the water (mg/L as CaCO₃)")
-        parser.add_argument("--alkalinity", type=float, required=True, help="Alkalinity of the water (mg/L as CaCO₃)")
-        parser.add_argument("--chlorine", type=float, required=True, help="Chlorine level in the water (mg/L)")
-        parser.add_argument("--total_coliforms", type=float, required=True, help="Total coliforms count in the water (CFU/100 mL)")
-        parser.add_argument("--e_coli", type=float, required=True, help="E. coli count in the water (CFU/100 mL)")
-
-        args = parser.parse_args()  # Parse the arguments provided by the user
+        parser = argparse.ArgumentParser(description="Predict water safety based on input parameters.")
+        parser.add_argument("--pH", type=float, required=True)
+        parser.add_argument("--turbidity", type=float, required=True)
+        parser.add_argument("--temperature", type=float, required=True)
+        parser.add_argument("--conductivity", type=float, required=True)
+        parser.add_argument("--dissolved_oxygen", type=float, required=True)
+        parser.add_argument("--salinity", type=float, required=True)
+        parser.add_argument("--total_dissolved_solids", type=float, required=True)
+        parser.add_argument("--hardness", type=float, required=True)
+        parser.add_argument("--alkalinity", type=float, required=True)
+        parser.add_argument("--chlorine", type=float, required=True)
+        parser.add_argument("--total_coliforms", type=float, required=True)
+        parser.add_argument("--e_coli", type=float, required=True)
+        args = parser.parse_args()
     except Exception as e:
         print(json.dumps({"error": f"Argument parsing failed: {e}", "traceback": traceback.format_exc()}))
         sys.exit(1)
 
     # === Load Trained Model === #
     try:
-        model = xgb.Booster()  # Initialize an XGBoost booster model
-        model.load_model(
-            "xgboost_waterwise.model"
-        )  # Load the trained model from file
+        model = xgb.Booster()
+        model.load_model("xgboost_waterwise.model")
     except Exception as e:
-        # If model loading fails, print an error in JSON format and exit
-        print(json.dumps({"error": f"Failed to load model: {e}", "traceback": traceback.format_exc()}))  
-        sys.exit(1)  # Exit the script with a non-zero code to indicate failure
+        print(json.dumps({"error": f"Failed to load model: {e}", "traceback": traceback.format_exc()}))
+        sys.exit(1)
 
     # === Prepare Input Data === #
     try:
-        data = {  # Create a dictionary with the input parameters
+        data = {
             "pH": args.pH,
             "turbidity": args.turbidity,
             "temperature": args.temperature,
@@ -57,66 +48,105 @@ def main():
             "alkalinity": args.alkalinity,
             "chlorine": args.chlorine,
         }
-        # Create a DataFrame from the input data
-        input_data = pd.DataFrame([data])  
+        input_data = pd.DataFrame([data])
     except Exception as e:
         print(json.dumps({"error": f"Input data preparation failed: {e}", "traceback": traceback.format_exc()}))
         sys.exit(1)
 
     # === Predict === #
-    try:  # Try block to handle potential exceptions during prediction
-        # Create a DMatrix for the input data. DMatrix is the internal data structure that the model uses
+    try:
         dmatrix_input = xgb.DMatrix(input_data, feature_names=list(input_data.columns))
-    except Exception as e:  # Handle any exceptions that occur during DMatrix creation
-        # Print the error message as JSON and exit the script if an error occurs
-        print(json.dumps({"error": f"Failed to create DMatrix: {e}", "traceback": traceback.format_exc()}))  
-        sys.exit(1)  # Exit the script with a non-zero exit code to indicate failure
+    except Exception as e:
+        print(json.dumps({"error": f"Failed to create DMatrix: {e}", "traceback": traceback.format_exc()}))
+        sys.exit(1)
 
-    try:  # Try block to handle potential exceptions during prediction
-        # Make a prediction using the loaded model and the DMatrix
-        prediction = model.predict(dmatrix_input)[0]  
-        # Convert the prediction to a human-readable label
-        label = "Safe" if prediction == 1 else "Unsafe"  
-    except Exception as e:  # Handle any exceptions that occur during prediction
-        # Print the error message as JSON and exit the script if an error occurs
-        print(json.dumps({"error": f"Prediction failed: {e}", "traceback": traceback.format_exc()}))  
-        sys.exit(1)  # Exit the script with a non-zero exit code to indicate failure
+    try:
+        prediction = model.predict(dmatrix_input)[0]
+        label = "Safe" if prediction == 1 else "Unsafe"
+    except Exception as e:
+        print(json.dumps({"error": f"Prediction failed: {e}", "traceback": traceback.format_exc()}))
+        sys.exit(1)
 
     # === Recommendations === #
     def generate_recommendations(data):
-        """
-        Generates recommendations for water quality based on the provided data.
-
-        Args:
-            data (dict): A dictionary containing the water quality parameters.
-
-        Returns:
-            list: A list of recommendation messages.
-        """
         messages = []
-        # Check if pH is outside the safe range
-        if data["pH"] < 6.5 or data["pH"] > 8.5:
-            messages.append(f"pH ({data['pH']}) is outside safe range (6.5-8.5).")  
-        # Check if turbidity is high
+
+        if data["pH"] < 6.5:
+            messages.append(
+                f"pH ({data['pH']}) is too low. Acidic water can corrode pipes and leach metals. "
+                "Add alkaline substances such as soda ash (sodium carbonate) or lime to raise pH."
+            )
+        elif data["pH"] > 8.5:
+            messages.append(
+                f"pH ({data['pH']}) is too high. Alkaline water can cause scale buildup and reduce disinfection efficiency. "
+                "Add acidic agents like citric acid or carbon dioxide to lower pH."
+            )
+
         if data["turbidity"] > 5:
-            messages.append(f"Turbidity ({data['turbidity']}) is high (> 5 NTU).")  
-        # Check if chlorine level is high
+            messages.append(
+                f"Turbidity ({data['turbidity']} NTU) is high. Cloudy water may contain pathogens or sediments. "
+                "Use coagulation-flocculation followed by sand filtration or membrane filtration."
+            )
+
         if data["chlorine"] > 4:
-            messages.append(f"Chlorine level ({data['chlorine']}) is high (> 4 mg/L).")  
-        # Microbial contamination check removed because these features are no longer available in input
+            messages.append(
+                f"Chlorine ({data['chlorine']} mg/L) exceeds safe levels. Can cause taste issues and health risks. "
+                "Consider activated carbon filters or dechlorination with ascorbic acid or sodium thiosulfate."
+            )
+
+        if data["total_dissolved_solids"] > 500:
+            messages.append(
+                f"TDS ({data['total_dissolved_solids']} mg/L) is high. Indicates excess minerals or pollutants. "
+                "Reverse osmosis, distillation, or deionization systems are effective treatment methods."
+            )
+
+        if data["conductivity"] > 1000:
+            messages.append(
+                f"Conductivity ({data['conductivity']} µS/cm) is high. May indicate excessive salts or contamination. "
+                "Test for specific ions (e.g., nitrates, sulfates) and consider ion exchange or reverse osmosis."
+            )
+
+        if data["dissolved_oxygen"] < 5:
+            messages.append(
+                f"Dissolved Oxygen ({data['dissolved_oxygen']} mg/L) is low. This can stress aquatic life. "
+                "Introduce aeration methods like fountains, diffused aerators, or surface agitators."
+            )
+
+        if data["salinity"] > 0.5:
+            messages.append(
+                f"Salinity ({data['salinity']} ppt) is high. May indicate saltwater intrusion or industrial discharge. "
+                "Monitor sources and use desalination techniques such as reverse osmosis."
+            )
+
+        if data["hardness"] > 150:
+            messages.append(
+                f"Hardness ({data['hardness']} mg/L) is high. May cause scale in pipes and reduce soap effectiveness. "
+                "Water softeners using ion-exchange resins are recommended."
+            )
+
+        if data["alkalinity"] < 20:
+            messages.append(
+                f"Alkalinity ({data['alkalinity']} mg/L) is too low. Poor buffering makes pH unstable. "
+                "Add sodium bicarbonate or lime to increase alkalinity and stabilize pH."
+            )
+        elif data["alkalinity"] > 200:
+            messages.append(
+                f"Alkalinity ({data['alkalinity']} mg/L) is high. May interfere with disinfection. "
+                "Dilution or acidic dosing (like sulfuric acid) can help reduce alkalinity."
+            )
+
         return messages
 
     try:
-        recommendations = generate_recommendations(data)  # Generate recommendations based on the input data
+        recommendations = generate_recommendations(data)
     except Exception as e:
         print(json.dumps({"error": f"Recommendation generation failed: {e}", "traceback": traceback.format_exc()}))
         sys.exit(1)
 
     # === Output === #
     try:
-        # Create a dictionary containing the prediction output
-        output = {"status": label, "recommendations": recommendations, "input_data": data}  
-        print(json.dumps(output, indent=2))  # Output the results in JSON format with indentation for readability
+        output = {"status": label, "recommendations": recommendations, "input_data": data}
+        print(json.dumps(output, indent=2))
     except Exception as e:
         print(json.dumps({"error": f"Output generation failed: {e}", "traceback": traceback.format_exc()}))
         sys.exit(1)
@@ -127,5 +157,3 @@ if __name__ == "__main__":
     except Exception as e:
         print(json.dumps({"error": f"Unexpected error: {e}", "traceback": traceback.format_exc()}))
         sys.exit(1)
-
- 

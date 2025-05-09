@@ -141,14 +141,14 @@
 
      function displayResultsFromLocalStorage() {
       const resultsDiv = document.getElementById('results');
-      const resultsData = localStorage.getItem('waterTestResults');
+      const resultsData = localStorage.getItem('predictionResult');
 
       if (!resultsData) {
         resultsDiv.innerHTML = '<p>No results available. Please submit the form first.</p>';
         return;
       }
 
-      try {
+     try {
         const results = JSON.parse(resultsData);
         const { status, recommendations } = results;
         const formattedRecommendations = recommendations.map(rec => `<li>${rec}</li>`).join('');

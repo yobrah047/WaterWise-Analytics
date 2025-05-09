@@ -122,26 +122,6 @@ app.get("/api/logout", (req, res, next) => {
 
 
 
-let latestPredictionResult = null;
-// GET route to send prediction data
-app.get('/api/get-results', (req, res, next) => {
-  if (!req.session.userId) {
-    const error = new Error("Unauthorized");
-    error.status = 401;
-    return next(error);
-  }
-
-  if (latestPredictionResult) {
-    res.json(latestPredictionResult);
-    latestPredictionResult = null;
-  }
-   else {
-    res.status(404).json({ error: "No results available." });
-  }
-});
-
-
-
 
 
 
@@ -186,21 +166,22 @@ app.post("/submit", async (req, res, next) => {
     }
   }
 
-  // Prepare data for Python script
-  const dataForPrediction = [
-      '--pH', parseFloat(data.ph),
-      '--turbidity', parseFloat(data.turbidity),
-      '--temperature', parseFloat(data.temperature),
-      '--conductivity', parseFloat(data.conductivity),
-      '--dissolved_oxygen', parseFloat(data.oxygen),
-      '--salinity', parseFloat(data.salinity),
-      '--total_dissolved_solids', parseFloat(data.tds), 
-      '--hardness', parseFloat(data.hardness),
-      '--alkalinity', parseFloat(data.alkalinity),
-      '--chlorine', parseFloat(data.chlorine),
-      '--total_coliforms', parseFloat(data.total_coliforms),
-      '--e_coli', parseFloat(data.e_coli)
-  ];
+ // Prepare data for Python script
+ const dataForPrediction = [
+    '--pH', parseFloat(data.ph),
+    '--turbidity', parseFloat(data.turbidity),
+    '--temperature', parseFloat(data.temperature),
+     '--conductivity', parseFloat(data.conductivity),
+    '--dissolved_oxygen', parseFloat(data.oxygen),
+    '--salinity', parseFloat(data.salinity),
+    '--total_dissolved_solids', parseFloat(data.tds),
+    '--hardness', parseFloat(data.hardness),
+    '--alkalinity', parseFloat(data.alkalinity),
+    '--chlorine', parseFloat(data.chlorine),
+    '--total_coliforms', parseFloat(data.total_coliforms),
+    '--e_coli', parseFloat(data.e_coli)
+];
+
 
   // Spawn Python process
   console.log('Spawning Python process with args:', ['predict.py', ...dataForPrediction]);
@@ -226,11 +207,7 @@ app.post("/submit", async (req, res, next) => {
     try {
       const resultFromPython = JSON.parse(pythonOutput);
 
-      // Store the result in the variable
-      latestPredictionResult = resultFromPython;
-
-
-      // Send result back to the front end after submiting
+      // Send result back to the front end
       res.status(200).json(resultFromPython);
 
       const query = `
