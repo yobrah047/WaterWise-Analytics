@@ -47,6 +47,8 @@ def main():
             "hardness": args.hardness,
             "alkalinity": args.alkalinity,
             "chlorine": args.chlorine,
+ "total_coliforms": args.total_coliforms,
+ "e_coli": args.e_coli,
         }
         input_data = pd.DataFrame([data])
     except Exception as e:
@@ -55,7 +57,13 @@ def main():
 
     # === Predict === #
     try:
-        dmatrix_input = xgb.DMatrix(input_data, feature_names=list(input_data.columns))
+        # Select only the columns that the model was trained on
+        model_features = ['pH', 'turbidity', 'temperature', 'conductivity', 'dissolved_oxygen', 'salinity', 'total_dissolved_solids', 'hardness', 'alkalinity', 'chlorine']
+        input_data_for_model = input_data[model_features]
+
+        # Create DMatrix for prediction using the selected features
+        dmatrix_input = xgb.DMatrix(input_data_for_model, feature_names=model_features)
+
     except Exception as e:
         print(json.dumps({"error": f"Failed to create DMatrix: {e}", "traceback": traceback.format_exc()}))
         sys.exit(1)
@@ -65,6 +73,33 @@ def main():
         label = "Safe" if prediction == 1 else "Unsafe"
     except Exception as e:
         print(json.dumps({"error": f"Prediction failed: {e}", "traceback": traceback.format_exc()}))
+        sys.exit(1)
+
+    # === Rule-Based Checks (WHO Guidelines) === #
+    # Check if any of the critical parameters violate the safe limits based on rules
+    is_unsafe_by_rules = False
+    if args.pH < 6.5 or args.pH > 8.5:
+        is_unsafe_by_rules = True
+    if args.turbidity > 5:
+        is_unsafe_by_rules = True
+    if args.chlorine > 5:
+        is_unsafe_by_rules = True
+    if args.total_coliforms > 0:
+        is_unsafe_by_rules = True
+    if args.e_coli > 0:
+        is_unsafe_by_rules = True
+
+    try:
+        # If none of the rules indicate unsafe water, set the label to Safe.
+        # Otherwise, apply the specific rules for overriding the model prediction.
+        if not is_unsafe_by_rules:
+            label = "Safe"
+        elif args.pH < 6.5 or args.pH > 8.5:
+            label = "Unsafe"
+        if args.turbidity > 5:
+            label = "Unsafe"
+    except Exception as e:
+        print(json.dumps({"error": f"Rule-based checks failed: {e}", "traceback": traceback.format_exc()}))
         sys.exit(1)
 
     # === Recommendations === #
