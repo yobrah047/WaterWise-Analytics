@@ -104,7 +104,10 @@ app.post("/api/login", async (req, res, next) => {
     }
 
     req.session.userId = user.id;
-    res.json({ success: true });
+    res.json({
+      success: true,
+      redirectUrl: "/instructions.html"
+    });
   } catch (err) {
     next(err);
   }

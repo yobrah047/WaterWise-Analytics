@@ -4,6 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Model Results | WaterWise Analytics</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.4.0/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.13/jspdf.plugin.autotable.min.js"></script>
   <style>
     /* Reset & Base */
     * {
@@ -128,6 +130,24 @@
     .fullscreen-button:hover {
       background: #4EA8DE;
     }
+
+    /* Report Button */
+    .report-button {
+      display: block;
+      width: fit-content;
+      margin: 20px auto 0;
+      background: #4EA8DE;
+      color: #121212;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 1rem;
+      transition: background-color 0.3s ease;
+    }
+    .report-button:hover {
+      background: #398CCB;
+    }
   </style>
 </head>
 <body>
@@ -161,6 +181,9 @@
       <div id="input-data-prev"></div>
     </div>
 
+    <!-- Report Button -->
+    <button class="report-button" onclick="generateReport()">Generate PDF Report</button>
+
   </div>
 
   <script>
@@ -176,6 +199,8 @@
       const raw = localStorage.getItem('predictionResult');
       if (!raw) {
         document.getElementById('status-prev').innerHTML = '<p>No results available. Submit the form first.</p>';
+        // Optionally hide the report button if no data
+        document.querySelector('.report-button').style.display = 'none';
         return;
       }
       try {
@@ -212,7 +237,7 @@
         const tbody = document.createElement('tbody');
         Object.entries(input_data).forEach(([key, val]) => {
           const row = document.createElement('tr');
-          let displayKey = key.replace(/_/g,' ').replace(/\b\w/g, l=> l.toUpperCase());
+          let displayKey = key.replace(/_/g,' ').replace(/\w/g, l=> l.toUpperCase());
           const tdKey = document.createElement('td'); tdKey.textContent = displayKey;
           const tdVal = document.createElement('td'); tdVal.textContent = val;
           row.appendChild(tdKey); row.appendChild(tdVal);
@@ -221,10 +246,106 @@
         table.appendChild(tbody);
         document.getElementById('input-data-prev').appendChild(table);
 
-        localStorage.removeItem('predictionResult');
+        // localStorage.removeItem('predictionResult'); // Keep data for report generation
       } catch (e) {
         console.error(e);
         document.getElementById('status-prev').innerHTML = '<p>Error displaying results.</p>';
+        document.querySelector('.report-button').style.display = 'none';
+      }
+    }
+
+    async function generateReport() {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+
+      doc.setFontSize(20);
+      doc.text("Water Quality Report", 105, 15, null, null, "center");
+
+      const raw = localStorage.getItem('predictionResult');
+      if (!raw) return;
+
+      try {
+        const { status, recommendations, input_data } = JSON.parse(raw);
+
+        let yOffset = 30;
+
+        // Prediction Status
+        doc.setFontSize(16);
+        doc.text("Prediction Status:", 15, yOffset);
+        yOffset += 10;
+        doc.setFontSize(12);
+        doc.text(status, 15, yOffset);
+        yOffset += 20;
+
+        // Input Data table
+        doc.setFontSize(16);
+        doc.text("Input Data:", 15, yOffset);
+        yOffset += 10;
+
+        const inputDataArray = Object.entries(input_data).map(([key, val]) => [
+            key.replace(/_/g, ' ').replace(/\w/g, l => l.toUpperCase()),
+            val
+        ]);
+
+        doc.autoTable({
+          startY: yOffset,
+          head: [['Parameter', 'Value']],
+          body: inputDataArray,
+          theme: 'striped',
+          styles: { cellPadding: 3, fontSize: 10, valign: 'middle' },
+          headStyles: { fillColor: [50, 50, 50], textColor: [255, 255, 255], fontStyle: 'bold' },
+          bodyStyles: { textColor: [0, 0, 0], fontSize: 12 },
+          didDrawPage: function (data) {
+            // Footer
+            doc.setFontSize(10);
+            const pageNumber = doc.internal.getNumberOfPages();
+            doc.text('Page ' + pageNumber, data.settings.margin.left, doc.internal.pageSize.height - 10);
+          }
+        });
+
+        // Update yOffset after input data table
+        yOffset = doc.autoTable.previous.finalY + 20;
+
+        // Recommendations table
+        doc.setFontSize(16);
+        doc.text("Recommendations:", 15, yOffset);
+        yOffset += 10;
+        doc.setFontSize(12);
+
+        const recommendationsArray = recommendations.length ? recommendations.map(r => [r]) : [["No specific recommendations. Water quality is optimal."]]; // Removed '- ' here
+
+        doc.autoTable({
+          startY: yOffset,
+          head: [['Recommendation']],
+          body: recommendationsArray,
+          theme: 'striped',
+          styles: { cellPadding: 3, fontSize: 12, valign: 'top', cellWidth: 'auto' }, // Changed cellWidth to 'auto'
+          headStyles: { fillColor: [50, 50, 50], textColor: [255, 255, 255], fontStyle: 'bold' },
+          bodyStyles: { textColor: [0, 0, 0] },
+          didDrawPage: function (data) {
+            // Footer
+            doc.setFontSize(10);
+            const pageNumber = doc.internal.getNumberOfPages();
+            doc.text('Page ' + pageNumber, data.settings.margin.left, doc.internal.pageSize.height - 10);
+          }
+        });
+
+        // Update yOffset after recommendations table
+        yOffset = doc.autoTable.previous.finalY + 20;
+
+        // Add page numbers if content overflows
+        const totalPages = doc.internal.getNumberOfPages();
+        for (let i = 1; i <= totalPages; i++) {
+            doc.setPage(i);
+            doc.setFontSize(10);
+            doc.text('Page ' + i + ' of ' + totalPages, doc.internal.pageSize.width - 30, doc.internal.pageSize.height - 10);
+        }
+
+        doc.save('water_quality_report.pdf');
+
+      } catch (e) {
+        console.error("Error generating PDF:", e);
+        alert("Could not generate report.");
       }
     }
 

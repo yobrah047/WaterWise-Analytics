@@ -47,8 +47,8 @@ def main():
             "hardness": args.hardness,
             "alkalinity": args.alkalinity,
             "chlorine": args.chlorine,
- "total_coliforms": args.total_coliforms,
- "e_coli": args.e_coli,
+            "total_coliforms": args.total_coliforms,
+            "e_coli": args.e_coli,
         }
         input_data = pd.DataFrame([data])
     except Exception as e:
@@ -90,14 +90,11 @@ def main():
         is_unsafe_by_rules = True
 
     try:
-        # If none of the rules indicate unsafe water, set the label to Safe.
-        # Otherwise, apply the specific rules for overriding the model prediction.
-        if not is_unsafe_by_rules:
-            label = "Safe"
-        elif args.pH < 6.5 or args.pH > 8.5:
-            label = "Unsafe"
-        if args.turbidity > 5:
-            label = "Unsafe"
+        # If any of the rules indicate unsafe water, set the label to Unsafe.
+        # Otherwise, the label is determined by the model prediction.
+        if is_unsafe_by_rules:
+             label = "Unsafe"
+
     except Exception as e:
         print(json.dumps({"error": f"Rule-based checks failed: {e}", "traceback": traceback.format_exc()}))
         sys.exit(1)
@@ -122,6 +119,12 @@ def main():
                 f"Turbidity ({data['turbidity']} NTU) is high. Cloudy water may contain pathogens or sediments. "
                 "Use coagulation-flocculation followed by sand filtration or membrane filtration."
             )
+
+        if data["temperature"] > 30: # Added recommendation for high temperature
+             messages.append(
+                 f"Temperature ({data['temperature']} °C) is high. Elevated temperature can decrease dissolved oxygen levels and promote microbial growth. "
+                 "Consider aeration or cooling methods, and monitor dissolved oxygen and microbial parameters."
+             )
 
         if data["chlorine"] > 4:
             messages.append(
@@ -170,11 +173,24 @@ def main():
                 "Dilution or acidic dosing (like sulfuric acid) can help reduce alkalinity."
             )
 
+        if data["total_coliforms"] > 0:
+             messages.append(
+                 f"Total Coliforms ({data['total_coliforms']} MPN/100mL) detected. Indicates potential fecal contamination. "
+                 "Requires immediate disinfection (e.g., chlorination) and investigation of the source."
+             )
+
+        if data["e_coli"] > 0:
+             messages.append(
+                 f"E. coli ({data['e_coli']} MPN/100mL) detected. Confirms fecal contamination and serious health risk. "
+                 "Water is unsafe to drink without treatment. Boil water or use strong disinfection and identify/eliminate contamination source."
+             )
+
         return messages
 
     try:
         recommendations = generate_recommendations(data)
         # Add a general recommendation if the label is "Unsafe" and no specific recommendations were added.
+        # This general recommendation might be redundant now with more specific rules, but keeping it as a fallback.
         if label == "Unsafe" and not recommendations:
             recommendations.append(
                 "Overall prediction is Unsafe. While individual parameters appear within typical ranges, the model indicates potential issues. Consider further testing or professional assessment before use."

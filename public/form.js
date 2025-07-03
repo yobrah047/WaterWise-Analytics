@@ -131,7 +131,11 @@ document.addEventListener("DOMContentLoaded", function () {
                     window.location.reload(); // Return to login form
                 } else {
                     alert("✅ Login successful! Redirecting...");
-                    window.location.href = "/"; // Redirect to index.html
+ if (result.redirectUrl) {
+                        window.location.href = result.redirectUrl; // Redirect to specified URL
+                    } else {
+ window.location.href = "/"; // Default redirect to index.html if no redirectUrl
+                    }
                 }
             } else {
                 alert("❌ " + (result.error || "Something went wrong"));
